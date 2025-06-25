@@ -8,8 +8,8 @@ const portApi = process.env.NODE_ENV === "development"
 
 const baseURLApi = `${hostApi}${portApi ? `:${portApi}` : ``}/api`;
 const redirectUrl = process.env.NODE_ENV === "development"
-  ? "http://localhost:3000/sistema-medico"
-  : "https://demo.flatlogic.com/sistema-medico";
+  ? "http://localhost:3000/sistema-gestion"
+  : "https://demo.flatlogic.com/sistema-gestion";
 
 
 export default {
