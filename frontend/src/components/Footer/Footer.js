@@ -5,8 +5,7 @@ import s from "./Footer.module.scss";
 const Footer = () => {
   return (
     <div className={s.footer}>
-      <span className={s.footerLabel}>2021 &copy; Flatlogic. Hand-crafted & Made with</span>
-      <FooterIcon />
+      <span className={s.footerLabel}>2025 &copy; Guido Magi | All rights reserved.</span>
     </div>
   )
 }

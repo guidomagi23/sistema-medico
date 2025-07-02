@@ -60,7 +60,7 @@ const Login = (props) => {
                 <p className="auth-header mb-0">Login</p>
                 <div className="logo-block">
                   <SofiaLogo />
-                  <p className="mb-0">SOFIA</p>
+                  <p className="mb-0">CLINARA</p>
                 </div>
               </div>
               <div className="auth-info my-2">

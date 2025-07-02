@@ -32,7 +32,7 @@ const Sidebar = (props) => {
     <nav className={cn(s.root, {[s.sidebarOpen]: burgerBtnToggled})}>
       <header className={s.logo}>
         <SofiaLogo/>
-        <span className={s.title}>SOFIA</span>
+        <span className={s.title}>CLINARA</span>
       </header>
       <ul className={s.nav}>
         <LinksGroup

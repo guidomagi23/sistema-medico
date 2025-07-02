@@ -55,7 +55,7 @@ export default function Navbars() {
                     </NavbarToggler>
                     <div className="d-flex flex-row justify-content-between align-items-center w-100">
                       <div>
-                        <span className="headline-2 font-weight-bold">SOFIA</span>
+                        <span className="headline-2 font-weight-bold">CLINARA</span>
                       </div>
                       <div className="d-none d-xl-block">
                         <Nav>
