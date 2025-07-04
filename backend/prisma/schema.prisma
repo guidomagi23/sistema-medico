@@ -1,15 +1,282 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+/// Proyecto: Sistema Médico Escalable (Veterinaria / Humano)
+/// Archivo compatible con dbdiagram.io con comentarios explicativos
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+/// Generador del cliente Prisma para JS
+/// Genera el cliente Prisma en la carpeta "../generated/prisma"
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
+/// Fuente de datos (base de datos MySQL, leer desde variable de entorno)
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+model Clinic {
+  id              Int     @id @default(autoincrement())
+  name            String  // Nombre de la clínica
+  address         String  // Dirección completa
+  phone           String  // Teléfono de contacto
+  is_human_clinic Boolean @default(false) @map("is_human_clinic") // true = humanos / false = veterinaria
+
+  patients        Patient[]              // Lista de pacientes asociados
+  appointments    Appointment[]          // Turnos en la clínica
+  financials      FinancialTransaction[] // Ingresos y egresos
+  products        Product[]              // Productos que maneja
+  subscriptions   Subscription[]         // Suscripciones activas
+  settings        ClinicSettings?        // Configuración de la clínica
+  userClinicRoles UserClinicRole[]       // Relación con usuarios y sus roles
+  clients         Client[]               // Clientes (dueños de mascotas)
+}
+
+model User {
+  id                Int                  @id @default(autoincrement())
+  email             String               @unique
+  password_hash     String               // Hash de contraseña
+  full_name         String               // Nombre completo del usuario
+
+  patients           Patient[]           @relation("DoctorPatients") // Como médico de cabecera
+  patientPermissions PatientPermission[] // Permisos sobre pacientes
+  medicalRecords     MedicalRecord[]     // Registros creados
+  recordAuditLogs    RecordAuditLog[]    // Acciones sobre registros
+  appointments       Appointment[]       // Turnos atendidos
+  vaccines           Vaccine[]           // Vacunas aplicadas
+  notifications      Notification[]      // Notificaciones programadas
+  userClinicRoles    UserClinicRole[]    // En cuáles clínicas participa y con qué rol
+}
+
+model UserClinicRole {
+  id        Int     @id @default(autoincrement())
+  user_id   Int
+  clinic_id Int
+  role      String? // owner, admin, user, etc.
+
+  user   User   @relation(fields: [user_id], references: [id])
+  clinic Clinic @relation(fields: [clinic_id], references: [id])
+
+  @@unique([user_id, clinic_id]) // Cada usuario puede tener un rol por clínica
+}
+
+model Client {
+  id         Int      @id @default(autoincrement())
+  clinic_id  Int
+  name       String               // Nombre del cliente (dueño)
+  email      String?
+  phone      String?
+  dni        String?  @unique     // DNI o documento identificador
+  address    String?
+  notes      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  clinic   Clinic    @relation(fields: [clinic_id], references: [id])
+  patients Patient[] // Mascotas del cliente
+}
+
+model Patient {
+  id                Int      @id @default(autoincrement())
+  external_id       String   @unique // Ej: H-123 o A-456
+  type_code         String            // H (humano) o A (animal)
+  name              String
+  species           String
+  breed             String?
+  birth_date        DateTime?
+  gender            String?
+  dni               String?
+  email             String?
+  phone             String?
+  address           String?
+  is_alive          Boolean  @default(true)
+  primary_doctor_id Int?
+  primary_doctor    User?    @relation("DoctorPatients", fields: [primary_doctor_id], references: [id])
+  notes             String?
+  clinic_id         Int
+  clinic            Clinic   @relation(fields: [clinic_id], references: [id])
+  client_id         Int?
+  client            Client?  @relation(fields: [client_id], references: [id])
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  permissions       PatientPermission[]
+  records           MedicalRecord[]
+  appointments      Appointment[]
+  vaccines          Vaccine[]
+  medications       Medication[]
+}
+
+model PatientPermission {
+  id           Int      @id @default(autoincrement())
+  patient_id   Int
+  user_id      Int
+  can_view     Boolean  @default(true)
+  can_add      Boolean  @default(false)
+  can_edit_own Boolean  @default(false)
+  can_edit_all Boolean  @default(false)
+  expires_at   DateTime?
+
+  patient Patient @relation(fields: [patient_id], references: [id])
+  user    User    @relation(fields: [user_id], references: [id])
+}
+
+model MedicalRecord {
+  id            Int       @id @default(autoincrement())
+  patient_id    Int
+  doctor_id     Int
+  date          DateTime
+  summary       String
+  type          String    // consulta, control, cirugía, etc.
+  notes         String?
+  status        String    @default("active")
+  cancel_reason String?
+  created_at    DateTime
+  updated_at    DateTime
+
+  patient   Patient        @relation(fields: [patient_id], references: [id])
+  doctor    User           @relation(fields: [doctor_id], references: [id])
+  files     RecordFile[]
+  audit_logs RecordAuditLog[]
+}
+
+model RecordFile {
+  id          Int      @id @default(autoincrement())
+  record_id   Int
+  file_url    String
+  type        String    // imagen, PDF, etc.
+  uploaded_at DateTime
+
+  record MedicalRecord @relation(fields: [record_id], references: [id])
+}
+
+model RecordAuditLog {
+  id        Int      @id @default(autoincrement())
+  record_id Int
+  user_id   Int
+  action    String    // view, create, edit, etc.
+  timestamp DateTime
+  detail    String?
+
+  record MedicalRecord @relation(fields: [record_id], references: [id])
+  user   User          @relation(fields: [user_id], references: [id])
+}
+
+model Appointment {
+  id                     Int      @id @default(autoincrement())
+  patient_id             Int
+  doctor_id              Int
+  clinic_id              Int
+  date                   DateTime
+  time                   DateTime
+  status                 String
+  notes                  String?
+  send_whatsapp_reminder Boolean
+
+  patient Patient @relation(fields: [patient_id], references: [id])
+  doctor  User    @relation(fields: [doctor_id], references: [id])
+  clinic  Clinic  @relation(fields: [clinic_id], references: [id])
+}
+
+model Vaccine {
+  id             Int      @id @default(autoincrement())
+  patient_id     Int
+  name           String
+  dose           String
+  date           DateTime
+  next_dose_date DateTime?
+  doctor_id      Int
+  notes          String?
+
+  patient Patient @relation(fields: [patient_id], references: [id])
+  doctor  User    @relation(fields: [doctor_id], references: [id])
+}
+
+model Medication {
+  id              Int      @id @default(autoincrement())
+  patient_id      Int
+  medication_name String
+  dose            String
+  start_date      DateTime
+  end_date        DateTime
+  instructions    String?
+
+  patient Patient @relation(fields: [patient_id], references: [id])
+}
+
+model Notification {
+  id           Int      @id @default(autoincrement())
+  user_id      Int
+  type         String
+  content      String
+  scheduled_at DateTime
+  status       String
+
+  user User @relation(fields: [user_id], references: [id])
+}
+
+model FinancialTransaction {
+  id          Int      @id @default(autoincrement())
+  clinic_id   Int
+  type        String   // income / expense
+  amount      Decimal
+  date        DateTime
+  description String?
+
+  clinic Clinic            @relation(fields: [clinic_id], references: [id])
+  items  TransactionItem[]
+}
+
+model TransactionItem {
+  id             Int     @id @default(autoincrement())
+  transaction_id Int
+  product_id     Int
+  quantity       Int
+  unit_price     Decimal
+
+  transaction FinancialTransaction @relation(fields: [transaction_id], references: [id])
+  product     Product              @relation(fields: [product_id], references: [id])
+}
+
+model Product {
+  id          Int     @id @default(autoincrement())
+  clinic_id   Int
+  name        String
+  sku         String  @unique
+  description String?
+
+  clinic    Clinic            @relation(fields: [clinic_id], references: [id])
+  inventory Inventory[]
+  items     TransactionItem[]
+}
+
+model Inventory {
+  id              Int       @id @default(autoincrement())
+  product_id      Int
+  quantity        Int
+  expiration_date DateTime?
+  location        String?
+
+  product Product @relation(fields: [product_id], references: [id])
+}
+
+model Subscription {
+  id             Int      @id @default(autoincrement())
+  clinic_id      Int
+  plan_name      String
+  payment_status String
+  renewal_date   DateTime
+  user_limit     Int
+
+  clinic Clinic @relation(fields: [clinic_id], references: [id])
+}
+
+model ClinicSettings {
+  id                     Int     @id @default(autoincrement())
+  clinic_id              Int     @unique
+  file_storage_type      String // local, google_drive
+  local_storage_path     String?
+  google_drive_folder_id String?
+  google_api_token       String?
+
+  clinic Clinic @relation(fields: [clinic_id], references: [id])
 }
